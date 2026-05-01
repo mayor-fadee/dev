@@ -1,0 +1,10 @@
+{
+  "name": "Fadixa DevTools",
+  "description": "A premium SaaS platform for developers to generate Telegram bots, test APIs, and create AI prompts instantly.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "Firebase",
+    "Express Backend",
+    "Gemini AI"
+  ]
+}

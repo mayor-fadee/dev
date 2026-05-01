@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // --- USERS COLLECTION ---
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if (isOwner(userId) && isValidUser(incoming()) && (
+        // Action: Update Usage
+        incoming().diff(existing()).affectedKeys().hasOnly(['generationCount', 'lastResetDate', 'plan'])
+      )) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['userId', 'email', 'plan', 'generationCount']) &&
+             data.userId == request.auth.uid &&
+             data.email is string && data.email.size() <= 256 &&
+             data.plan in ['free', 'premium', 'admin'] &&
+             data.generationCount is int;
+    }
+
+    // --- AI SETTINGS COLLECTION ---
+    match /ai_settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // --- USAGE LOGS COLLECTION ---
+    match /usage_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+    }
+
+    // --- ADMINS COLLECTION ---
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Only maintainable via Firebase Console
+    }
+
+    // --- PROJECTS COLLECTION ---
+    match /projects/{projectId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() && 
+                      isValidId(projectId) && 
+                      isValidProject(incoming()) &&
+                      incoming().userId == request.auth.uid;
+                      
+      allow update: if isOwner(existing().userId) && 
+                      isValidProject(incoming()) && (
+                        // Action: Edit
+                        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'content', 'updatedAt'])
+                      );
+                      
+      allow delete: if isOwner(existing().userId);
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['userId', 'name', 'type', 'content', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.type in ['bot', 'prompt', 'api-test'] &&
+             data.content is string && data.content.size() <= 100000 &&
+             data.createdAt == request.time;
+    }
+  }
+}

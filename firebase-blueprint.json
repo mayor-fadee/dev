@@ -1,0 +1,63 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "A generated project (bot, prompt, or API test) saved by the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the owner" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["bot", "prompt", "api-test"] },
+        "content": { "type": "string", "description": "The generated code or text" },
+        "config": { "type": "object", "description": "Additional settings for the tool" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "type", "content", "createdAt"]
+    },
+    "User": {
+      "title": "User Profile",
+      "description": "User subscription and usage data.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "plan": { "type": "string", "enum": ["free", "premium", "admin"] },
+        "generationCount": { "type": "integer" },
+        "lastResetDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "plan", "generationCount"]
+    },
+    "AISetting": {
+      "title": "AI Setting",
+      "description": "Configuration for which AI model to use for a specific feature.",
+      "type": "object",
+      "properties": {
+        "featureId": { "type": "string" },
+        "modelName": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["featureId", "modelName", "enabled"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Collection of developer tools projects."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Private user profile data."
+    },
+    "/ai_settings/{settingId}": {
+      "schema": "AISetting",
+      "description": "Global AI model configuration."
+    },
+    "/admins/{adminId}": {
+      "schema": "object",
+      "description": "List of admin user UIDs."
+    }
+  }
+}
